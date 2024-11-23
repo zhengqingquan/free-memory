@@ -2,149 +2,29 @@
 #include <stdlib.h>
 #include <string.h>
 
-// 对象数组
-// 这个要求每个元素都是单独申请的内容，
-// 这个是释放结构体数组的，因为使用了->、.等指针运算符
-// 这里的数组共享同一块内存
-#define RELEASE_STRUCT_OBJECT_ARRAY_START(SturetType, ArrayPtr, ArraySize) \
-    do \
-    { \
-        nested_level++;\
-        \
-        void** array_ptr = (void**)&((*ptr)->ArrayPtr);\
-        printf("[nested level %d] array variable '%s': 0x%p\n", nested_level, #ArrayPtr, *array_ptr);\
-        \
-        SturetType* backup_array_ptr = (SturetType*)(*array_ptr);\
-        \
-        int* array_size_ptr = (int*)&((*ptr)->ArraySize);\
-        printf("[nested level %d] array size '%s': %d\n", nested_level, #ArraySize, *array_size_ptr);\
-        \
-        for (size_t i = 0; i < *array_size_ptr; i++)\
-        {\
-            SturetType* temp = (SturetType*)&backup_array_ptr[i];\
-            SturetType** ptr = (SturetType**)&temp;\
-            printf("[nested level %d] %s[%d]: 0x%p\n", nested_level, #ArrayPtr, i, *ptr);
-
-#define RELEASE_STRUCT_OBJECT_ARRAY_END                     \
-        }\
-        RELEASE_ARRAY_not_each(*array_ptr, *array_size_ptr); \
-                \
-        printf("[nested level %d] release struct end\n", nested_level);\
-        nested_level--;\
-    }                                                     \
-    while (0);
+/**
+ * -----------------------------------------------
+ * |                 内存释放                     |
+ * -----------------------------------------------
+ */
 
 /**
- * @brief 用于释放结构体二维指针数组成员内存的宏定义。与 RELEASE_STRUCT_DIMENSIONAL_PTR_ARRAY_END 配合使用。
+ * @brief 用于释放内存，并将指针设置为NULL。
  */
-#define RELEASE_STRUCT_DIMENSIONAL_PTR_ARRAY_START(SturetType, ArrayPtr, ArraySize) \
-    do \
-    { \
-        nested_level++;\
-        \
-        void** array_ptr = (void**)&((*ptr)->ArrayPtr);\
-        printf("[nested level %d] array variable '%s': 0x%p\n", nested_level, #ArrayPtr, *array_ptr);\
-        \
-        SturetType** backup_array_ptr = (SturetType**)(*array_ptr);\
-        /*SturetType** backup_array_ptr = (SturetType**)((*ptr)->ArrayPtr);*/\
-        \
-        int* array_size_ptr = (int*)&((*ptr)->ArraySize);\
-        printf("[nested level %d] array size '%s': %d\n", nested_level, #ArraySize, *array_size_ptr);\
-        \
-        for (size_t i = 0; i < *array_size_ptr; i++)\
-        {\
-            /*void** ptr = (void**)&(SturetType2_ptr[2]);*/\
-            /*SturetType2* ptr = (SturetType2*)&(SturetType2_ptr[i]);*/\
-            /*SturetType2* ptr = (SturetType2*)&temp;*/\
-            /*SturetType2* ptr = &((SturetType2*)SturetType2_ptr)[i];*/\
-            SturetType** ptr = (SturetType**)&backup_array_ptr[i];\
-            /*printf("ptr[%d]: 0x%p\n",i, ptr);*/\
-            /*printf("ptr[%d]: %s\n",i, (*ptr)->name);*/\
-            printf("[nested level %d] %s[%d]: 0x%p\n", nested_level, #ArrayPtr, i, *ptr);
-
-/**
- * @brief 用于释放结构体二维指针数组成员内存的宏定义。与 RELEASE_STRUCT_DIMENSIONAL_PTR_ARRAY_START 配合使用。
- */
-#define RELEASE_STRUCT_DIMENSIONAL_PTR_ARRAY_END                     \
-        }\
-        \
-        /*RELEASE_MEMORY(*array_ptr);*/\
-        RELEASE_ARRAY(*array_ptr, *array_size_ptr);\
-        \
-        printf("[nested level %d] release struct end\n", nested_level);\
-        nested_level--;\
-    }                                                     \
-    while (0);
-
-/**
- * @brief 用于释放结构体内存的宏定义。与宏 RELEASE_STRUCT_END 配合使用。
- */
-#define RELEASE_STRUCT_START(SturetType, StructPtr)         \
-    do                                                      \
-    {                                                       \
-        int nested_level = 0;                                          \
-        if (StructPtr == NULL)                              \
-        {                                                   \
-            printf("%s 0x%p is null.\n", #StructPtr, &StructPtr); \
-            break;                                          \
-        }                                                   \
-        /*void** ptr = (void**)&StructPtr;*/ \
-        printf("[nested level %d] struct variable '%s': 0x%p\n", nested_level, #StructPtr, StructPtr); \
-        SturetType** ptr = (SturetType**)&StructPtr;
-
-/**
- * @brief 用于释放结构体内存的宏定义。与宏 RELEASE_STRUCT_START 配合使用。
- */
-#define RELEASE_STRUCT_END \
-        RELEASE_MEMORY(*ptr);\
-        printf("[nested level %d] release struct end\n", nested_level);\
-    } while (0);
-
-/**
- * @brief 用于释放结构体中的指针。因为使用了 '->' 运算符，不能用于普通指针。
- */
-#define RELEASE_STRUCT_MEMORY(FiledName) \
-    nested_level++;\
-    printf("[nested level %d] pointer variable '%s': 0x%p\n", nested_level, #FiledName, (*ptr)->FiledName);\
-    RELEASE_MEMORY((*ptr)->FiledName);\
-    nested_level--;
-
-/**
- * @brief 用于释放结构体的二维指针数组成员。
- * 
- * 会释放数组中的每一个指针。因为使用了 '->' 运算符，不能用于普通数组。
- */
-#define RELEASE_STRUCT_ARRAY(ArrayFiledName, ArrayFiledSize) \
-    nested_level++;\
-    printf("[nested level %d] pointer variable '%s': 0x%p\n", nested_level, #ArrayFiledName, (*ptr)->ArrayFiledName);\
-    RELEASE_ARRAY((*ptr)->ArrayFiledName, (*ptr)->ArrayFiledSize);\
-    nested_level--;
-
-/**
- * @brief 用于释放结构体的对象数组成员。
- * 
- * 不会释放数组中的每一个元素。因为使用了 '->' 运算符，不能用于普通数组。
- */
-#define RELEASE_STRUCT_ARRAY_not_each(ArrayFiledName, ArrayFiledSize) \
-    RELEASE_ARRAY_not_each((*ptr)->ArrayFiledName, (*ptr)->ArrayFiledSize);
-
-/**
- * @brief 释放内存，并将指针设置为NULL。
- */
-#define RELEASE_MEMORY(MemoryPtr) \
-    releaseMemory((void**)&(MemoryPtr))
+#define RELEASE_MEMORY(MemoryPtr)\
+    releaseMemory((void**)&(MemoryPtr));
 
 /**
  * @brief 用于释放动态二维数组。会单独释放数组中的每个元素，最后释放数组，并将数组大小设置为 0。
  */
-#define RELEASE_ARRAY(ArrayPtr, ArraySize) \
-    releaseArray((void***)&(ArrayPtr), &(ArraySize))
+#define RELEASE_PTR_ARRAY(ArrayPtr, ArraySize)\
+    releasePtrArray((void***)&(ArrayPtr), &(ArraySize));
 
 /**
- * @brief 用于释放存储对象的数组。不会释放数组中的每个元素，只会释放数组本身，并将数组大小设置为 0。
+ * @brief 用于释放对象数组。不会释放数组中的每个元素，只会释放数组本身，并将数组大小设置为 0。
  */
-#define RELEASE_ARRAY_not_each(ArrayPtr, ArraySize) \
-    releaseArray_not_each((void**)&(ArrayPtr), &(ArraySize))
+#define RELEASE_OBJECT_ARRAY(ArrayPtr, ArraySize)\
+    releaseObjectArray((void**)&(ArrayPtr), &(ArraySize));
 
 /**
  * @brief 释放内存，并将指针设置为NULL。
@@ -179,7 +59,7 @@ int releaseMemory(void** ptr)
  * @param ptrArray 指向需要释放的数组的指针。
  * @param size 指向数组大小的指针。
  */
-void releaseArray(void*** ptrArray, int* size)
+void releasePtrArray(void*** ptrArray, int* size)
 {
     if (ptrArray == NULL)
     {
@@ -213,7 +93,7 @@ void releaseArray(void*** ptrArray, int* size)
  * @param ptrArray 指向需要释放的数组的指针。
  * @param size 指向数组大小的指针。
  */
-void releaseArray_not_each(void** ptrArray, int* size)
+void releaseObjectArray(void** ptrArray, int* size)
 {
     if (releaseMemory(ptrArray) == 0)
     {
@@ -222,6 +102,143 @@ void releaseArray_not_each(void** ptrArray, int* size)
 
     *size = 0;
 }
+
+/**
+ * -----------------------------------------------
+ * |                 结构体释放                   |
+ * -----------------------------------------------
+ */
+
+/**
+ * @brief 用于释放结构体内存的宏定义。表示释放结构体开始。
+ * 
+ * 与宏 RELEASE_STRUCT_END 配合使用。
+ */
+#define RELEASE_STRUCT_START(SturetType, StructPtr)\
+    do\
+    {\
+        int nested_level = 0;\
+        if (StructPtr == NULL)\
+        {\
+            printf("[nested level %d] struct variable '%s'(0x%p) is null.\n", nested_level, #StructPtr, &StructPtr);\
+            break;\
+        }\
+        printf("[nested level %d] struct variable '%s': 0x%p\n", nested_level, #StructPtr, StructPtr);\
+        SturetType** ptr = (SturetType**)&StructPtr;
+
+/**
+ * @brief 用于释放结构体内存的宏定义。表示释放结构体结束。
+ * 
+ * 与宏 RELEASE_STRUCT_START 配合使用。
+ */
+#define RELEASE_STRUCT_END\
+        RELEASE_MEMORY(*ptr);\
+        printf("[nested level %d] release struct end\n", nested_level);\
+    } while (0);
+
+/**
+ * @brief 用于释放结构体对象数组成员内存的宏定义。
+ * 
+ * 与 RELEASE_STRUCT_OBJECT_ARRAY_END 配合使用。
+ */
+#define RELEASE_STRUCT_OBJECT_ARRAY_START(SturetType, ArrayPtr, ArraySize)\
+    do\
+    {\
+        nested_level++;\
+        \
+        void** array_ptr = (void**)&((*ptr)->ArrayPtr);\
+        printf("[nested level %d] array variable '%s': 0x%p\n", nested_level, #ArrayPtr, *array_ptr);\
+        \
+        SturetType* backup_array_ptr = (SturetType*)(*array_ptr);\
+        \
+        int* array_size_ptr = (int*)&((*ptr)->ArraySize);\
+        printf("[nested level %d] array size '%s': %d\n", nested_level, #ArraySize, *array_size_ptr);\
+        \
+        for (size_t i = 0; i < *array_size_ptr; i++)\
+        {\
+            SturetType* temp = (SturetType*)&backup_array_ptr[i];\
+            SturetType** ptr = (SturetType**)&temp;\
+            printf("[nested level %d] %s[%d]: 0x%p\n", nested_level, #ArrayPtr, i, *ptr);
+
+/**
+ * @brief 用于释放结构体对象数组成员内存的宏定义。
+ * 
+ * 与 RELEASE_STRUCT_OBJECT_ARRAY_START 配合使用。
+ */
+#define RELEASE_STRUCT_OBJECT_ARRAY_END\
+        }\
+        RELEASE_OBJECT_ARRAY(*array_ptr, *array_size_ptr);\
+        \
+        printf("[nested level %d] release struct end\n", nested_level);\
+        nested_level--;\
+    }\
+    while (0);
+
+/**
+ * @brief 用于释放结构体二维指针数组成员内存的宏定义。
+ * 
+ * 与 RELEASE_STRUCT_PTR_ARRAY_END 配合使用。
+ */
+#define RELEASE_STRUCT_PTR_ARRAY_START(SturetType, ArrayPtr, ArraySize)\
+    do \
+    {\
+        nested_level++;\
+        \
+        void** array_ptr = (void**)&((*ptr)->ArrayPtr);\
+        printf("[nested level %d] array variable '%s': 0x%p\n", nested_level, #ArrayPtr, *array_ptr);\
+        \
+        SturetType** backup_array_ptr = (SturetType**)(*array_ptr);\
+        \
+        int* array_size_ptr = (int*)&((*ptr)->ArraySize);\
+        printf("[nested level %d] array size '%s': %d\n", nested_level, #ArraySize, *array_size_ptr);\
+        \
+        for (size_t i = 0; i < *array_size_ptr; i++)\
+        {\
+            SturetType** ptr = (SturetType**)&backup_array_ptr[i];\
+            printf("[nested level %d] %s[%d]: 0x%p\n", nested_level, #ArrayPtr, i, *ptr);
+
+/**
+ * @brief 用于释放结构体二维指针数组成员内存的宏定义。
+ * 
+ * 与 RELEASE_STRUCT_PTR_ARRAY_START 配合使用。
+ */
+#define RELEASE_STRUCT_PTR_ARRAY_END\
+        }\
+        \
+        RELEASE_PTR_ARRAY(*array_ptr, *array_size_ptr);\
+        \
+        printf("[nested level %d] release struct end\n", nested_level);\
+        nested_level--;\
+    }\
+    while (0);
+
+/**
+ * @brief 用于释放结构体中的指针。因为使用了 '->' 运算符，不能用于普通指针。
+ */
+#define RELEASE_STRUCT_MEMORY(FiledName)\
+    nested_level++;\
+    printf("[nested level %d] pointer variable '%s': 0x%p\n", nested_level, #FiledName, (*ptr)->FiledName);\
+    RELEASE_MEMORY((*ptr)->FiledName);\
+    nested_level--;
+
+/**
+ * @brief 用于释放结构体的二维指针数组成员。
+ * 
+ * 会释放数组中的每一个指针。因为使用了 '->' 运算符，不能用于普通数组。
+ */
+#define RELEASE_STRUCT_PTR_ARRAY(ArrayFiledName, ArrayFiledSize)\
+    nested_level++;\
+    printf("[nested level %d] pointer variable '%s': 0x%p\n", nested_level, #ArrayFiledName, (*ptr)->ArrayFiledName);\
+    RELEASE_PTR_ARRAY((*ptr)->ArrayFiledName, (*ptr)->ArrayFiledSize);\
+    nested_level--;
+
+/**
+ * @brief 用于释放结构体的对象数组成员。
+ * 
+ * 不会释放数组中的每一个元素。因为使用了 '->' 运算符，不能用于普通数组。
+ */
+#define RELEASE_STRUCT_OBJECT_ARRAY(ArrayFiledName, ArrayFiledSize)\
+    RELEASE_OBJECT_ARRAY((*ptr)->ArrayFiledName, (*ptr)->ArrayFiledSize);
 
 typedef struct
 {
@@ -368,7 +385,7 @@ int main()
         // printf("------ dogs ------\n");
         // printf("dog_num: %d\n", student->dog_num);
         // printf("dog_names: 0x%p\n", student->dog_names);
-        RELEASE_STRUCT_ARRAY(dog_names, dog_num); // 释放学生的狗的名字数组的内存
+        RELEASE_STRUCT_PTR_ARRAY(dog_names, dog_num); // 释放学生的狗的名字数组的内存
         // printf("dog_num: %d\n", student->dog_num);
         // printf("dog_names: 0x%p\n", student->dog_names);
         // printf("------ dogs ------\n");
@@ -378,7 +395,7 @@ int main()
         // printf("teacher num: %d\n", student->teacher_num);
         RELEASE_STRUCT_OBJECT_ARRAY_START(teachers, teacher, teacher_num)
             RELEASE_STRUCT_MEMORY(name);
-            RELEASE_STRUCT_ARRAY(course_names, course_num)
+            RELEASE_STRUCT_PTR_ARRAY(course_names, course_num)
         RELEASE_STRUCT_OBJECT_ARRAY_END
         // printf("teacher: 0x%p\n", student->teacher);
         // printf("teacher num: %d\n", student->teacher_num);
@@ -387,12 +404,12 @@ int main()
         // printf("------ friends ------\n");
         // printf("friends: 0x%p\n", student->friends);
         // printf("friends num: %d\n", student->friends_num);
-        RELEASE_STRUCT_DIMENSIONAL_PTR_ARRAY_START(friend, friends, friends_num)
+        RELEASE_STRUCT_PTR_ARRAY_START(friend, friends, friends_num)
             RELEASE_STRUCT_MEMORY(name);
-            RELEASE_STRUCT_DIMENSIONAL_PTR_ARRAY_START(pet, pets, pet_num)
+            RELEASE_STRUCT_PTR_ARRAY_START(pet, pets, pet_num)
                 RELEASE_STRUCT_MEMORY(pet_name);
-            RELEASE_STRUCT_DIMENSIONAL_PTR_ARRAY_END
-        RELEASE_STRUCT_DIMENSIONAL_PTR_ARRAY_END
+            RELEASE_STRUCT_PTR_ARRAY_END
+        RELEASE_STRUCT_PTR_ARRAY_END
         // printf("friends: 0x%p\n", student->friends);
         // printf("friends num: %d\n", student->friends_num);
         // printf("------ friends ------\n");
@@ -400,57 +417,6 @@ int main()
     RELEASE_STRUCT_END;
 
     printf("allocated memory for student: 0x%p\n", student);
-
-    return 0;
-
-    // --------------------- 示例1 ----------
-
-    int size = 4; // 字符串数组的大小
-    char** strArray = (char**)malloc(size * sizeof(char*)); // 分配字符串数组的内存
-
-    // 检查内存分配是否成功
-    if (strArray == NULL)
-    {
-        printf("malloc failed!\n");
-        return 1;
-    }
-
-    // 为每个字符串分配内存
-    for (int i = 0; i < size; i++)
-    {
-        strArray[i] = (char*)malloc(50 * sizeof(char)); // 假设每个字符串最大长度为49（1个字符用于空字符结束）
-
-        // 检查内存分配是否成功
-        if (strArray[i] == NULL)
-        {
-            printf("内存分配失败！\n");
-
-            // 释放已分配的内存
-            for (int j = 0; j < i; j++)
-            {
-                free(strArray[j]);
-            }
-            free(strArray);
-            return 1;
-        }
-    }
-
-    // 初始化字符串
-    strcpy(strArray[0], "Hello, world!");
-    strcpy(strArray[1], "Welcome to C programming.");
-    strcpy(strArray[2], "This is a dynamically allocated string array.");
-    strcpy(strArray[3], "Enjoy coding!");
-
-    // 打印字符串数组内容
-    printf("字符串数组内容：\n");
-    for (int i = 0; i < size; i++)
-    {
-        printf("%s\n", strArray[i]);
-    }
-
-    RELEASE_ARRAY(strArray, size); // 释放字符串数组的内存
-    printf("strArray 0x%p is released.\n", strArray);
-    printf("size of strArray: %d\n", size);
 
     return 0;
 }
