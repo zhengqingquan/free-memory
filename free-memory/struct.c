@@ -240,6 +240,37 @@ void releaseObjectArray(void** ptrArray, int* size)
 #define RELEASE_STRUCT_OBJECT_ARRAY(ArrayFiledName, ArrayFiledSize)\
     RELEASE_OBJECT_ARRAY((*ptr)->ArrayFiledName, (*ptr)->ArrayFiledSize);
 
+/**
+ * @brief 开始嵌套结构体的宏定义。
+ * 
+ * 与 NESTED_STRUCT_END 配合使用。
+ */
+#define NESTED_TYPEDEF_STRUCT_START(SturetType, FiledName)\
+    do \
+    {\
+        nested_level++;\
+        SturetType* temp_ptr = (SturetType*)&((*ptr)->FiledName);\
+        printf("[nested level %d] pointer variable '%s': 0x%p\n", nested_level, #FiledName, temp_ptr);\
+        SturetType** ptr = (SturetType**)&(temp_ptr);
+
+/**
+ * @brief 开始嵌套结构体的宏定义。
+ * 
+ * 与 NESTED_STRUCT_END 配合使用。
+ */
+#define NESTED_STRUCT_START(SturetType, FiledName)\
+    NESTED_TYPEDEF_STRUCT_START(struct SturetType, FiledName)
+
+/**
+ * @brief 结束嵌套结构体的宏定义。
+ * 
+ * 与 NESTED_STRUCT_START 或 NESTED_TYPEDEF_STRUCT_START 配合使用。
+ */
+#define NESTED_STRUCT_END\
+        nested_level--;\
+    }\
+    while (0);
+
 typedef struct
 {
     int id; // 教师ID
@@ -274,6 +305,14 @@ typedef struct
     int teacher_num; // 学生的老师的数量
     friend** friends; // 学生的朋友
     int friends_num; // 学生的朋友的数量
+    struct explain2
+    {
+        char* word_means;
+        int word_means_count; // 包含的释义数量
+        char** case_word; // 数组，包含例子释义
+        int case_word_count;
+        friend** friends; // 学生的朋友
+    }explain;
 } Student;
 
 Student* create_student(void)
@@ -364,6 +403,21 @@ Student* create_student(void)
         }
     }
 
+    student->explain.word_means = (char*)malloc(50 * sizeof(char)); // 分配学生的释义的内存
+    strcpy(student->explain.word_means, "this is a word means"); // 初始化学生的释义
+    printf("allocated memory for student explain: %s, 0x%p\n", student->explain.word_means, student->explain.word_means);
+
+    student->explain.case_word_count = 2; // 初始化学生的释义的例子释义的数量
+    student->explain.case_word = (char**)malloc(student->explain.case_word_count * sizeof(char*)); // 分配学生的释义的例子释义的数组的内存
+    printf("allocated memory for student explain case word array: 0x%p\n", student->explain.case_word);
+    for (size_t i = 0; i < student->explain.case_word_count; i++)
+    {
+        student->explain.case_word[i] = (char*)malloc(50 * sizeof(char)); // 分配每个例子释义的内存
+        snprintf(student->explain.case_word[i], 50, "case%d", i); // 初始化每个例子释义
+        printf("allocated memory for case%d word: 0x%p\n", i, student->explain.case_word[i]);
+    }
+    
+
     printf("------ student malloc end ------\n");
     return student;
 }
@@ -414,6 +468,14 @@ int main()
         // printf("friends num: %d\n", student->friends_num);
         // printf("------ friends ------\n");
 
+        // printf("zqq 0x%p\n", &student->friends_num);
+        // printf("zqq 0x%p\n", &student->explain);
+        // struct explain2* explain = &student->explain;
+        // printf("zqq %s\n", explain->word_means);
+        NESTED_STRUCT_START(explain2, explain)
+            RELEASE_STRUCT_MEMORY(word_means);
+            RELEASE_STRUCT_PTR_ARRAY(case_word, case_word_count);
+        NESTED_STRUCT_END
     RELEASE_STRUCT_END;
 
     printf("allocated memory for student: 0x%p\n", student);
